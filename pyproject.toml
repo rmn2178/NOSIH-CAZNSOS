@@ -1,0 +1,74 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "nosih"
+version = "1.0.0"
+description = "NOSIH: A Carbon-Aware, Zero-Trust Neuro-Symbolic Orchestration System for Energy-Efficient and Prompt-Injection-Free AI"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.11"
+authors = [
+  { name = "Gokulraman B", email = "gokulrmn2178@gmail.com" },
+]
+maintainers = [
+  { name = "Gokulraman B", email = "gokulrmn2178@gmail.com" },
+]
+keywords = [
+  "agentic-ai",
+  "neuro-symbolic",
+  "carbon-aware-computing",
+  "green-ai",
+  "zero-trust",
+  "prompt-injection",
+  "mcp-security",
+  "macaroons",
+  "conformal-prediction",
+  "power-management",
+]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Science/Research",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: Scientific/Engineering :: Artificial Intelligence",
+  "Topic :: Security :: Cryptography",
+  "Topic :: System :: Distributed Computing",
+]
+dependencies = [
+  "numpy>=1.26.0",
+  "scipy>=1.11.0",
+  "jsonschema>=4.20.0",
+  "matplotlib>=3.8.0",
+  "Pillow>=10.0.0",
+  "python-docx>=1.1.0",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.0.0",
+  "ruff>=0.4.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/gokulraman-b/nosih"
+Repository = "https://github.com/gokulraman-b/nosih"
+Issues = "https://github.com/gokulraman-b/nosih/issues"
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["nosih*"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+addopts = "-v --tb=short"

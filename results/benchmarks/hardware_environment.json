@@ -1,0 +1,11 @@
+{
+  "os": "Linux-6.12.105+-x86_64-with-glibc2.36",
+  "architecture": "x86_64",
+  "python_version": "3.11.2",
+  "cpu_count_logical": 2,
+  "rapl_available": false,
+  "nvml_available": false,
+  "gpu_detected": null,
+  "energy_accounting_mode": "HYBRID_CPU_TDP",
+  "neural_execution_mode": "CALIBRATED_TRACE_SIM"
+}

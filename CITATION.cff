@@ -1,0 +1,31 @@
+cff-version: 1.2.0
+title: "NOSIH: A Carbon-Aware, Zero-Trust Neuro-Symbolic Orchestration System for Energy-Efficient and Prompt-Injection-Free AI"
+message: "If you use NOSIH in your research or software, please cite it using the metadata below."
+type: software
+authors:
+  - family-names: "B"
+    given-names: "Gokulraman"
+    email: "gokulrmn2178@gmail.com"
+repository-code: "https://github.com/gokulraman-b/nosih"
+license: MIT
+version: "1.0.0"
+date-released: "2026-11-19"
+keywords:
+  - agentic-ai
+  - carbon-aware-computing
+  - green-ai
+  - neuro-symbolic-orchestration
+  - prompt-injection-defense
+  - mcp-security
+  - macaroon-capabilities
+  - provenance-semiring
+  - online-conformal-pid
+  - power-management
+preferred-citation:
+  type: article
+  title: "NOSIH: A Carbon-Aware, Zero-Trust Neuro-Symbolic Orchestration System for Energy-Efficient and Prompt-Injection-Free AI"
+  authors:
+    - family-names: "B"
+      given-names: "Gokulraman"
+      email: "gokulrmn2178@gmail.com"
+  year: 2026

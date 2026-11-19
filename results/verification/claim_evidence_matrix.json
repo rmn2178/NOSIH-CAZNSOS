@@ -1,0 +1,15 @@
+{
+  "total_claims_checked": 58,
+  "verified_claims": 58,
+  "all_claims_verified": true,
+  "missing_claims": [],
+  "timing_checks": {
+    "proxy_p95_under_15ms": true,
+    "merkle_inc_under_50us": true,
+    "merkle_cons_under_50us": true,
+    "all_tests_passed": true
+  },
+  "timing_failures": [],
+  "forbidden_mentions_found": 0,
+  "violations": []
+}

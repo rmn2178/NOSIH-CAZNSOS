@@ -1,0 +1,17 @@
+{
+  "tests_run": 46,
+  "failures": 0,
+  "errors": 0,
+  "skipped": 0,
+  "passed": true,
+  "elapsed_seconds": 0.997,
+  "layers": [
+    "unit",
+    "crypto",
+    "security",
+    "control",
+    "execution",
+    "integration",
+    "power"
+  ]
+}
