@@ -1,0 +1,66 @@
+[package]
+name = "nosih-caznsos"
+version = "0.1.0"
+edition = "2021"
+description = "NOSIH-CAZNSOS: Zero-trust, carbon-aware multi-provider OpenAI-compatible LLM proxy"
+license = "MIT"
+readme = "README.md"
+
+[[bin]]
+name = "nosih-caznsos"
+path = "src/main.rs"
+
+[lib]
+name = "nosih_caznsos"
+path = "src/lib.rs"
+
+[dependencies]
+tokio = { version = "1.40", features = ["full"] }
+axum = { version = "0.7", features = ["json", "macros", "multipart"] }
+tower-http = { version = "0.6", features = ["trace", "cors", "fs"] }
+reqwest = { version = "0.12", default-features = false, features = ["json", "stream", "rustls-tls", "http2"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1", features = ["preserve_order"] }
+ryu = "1"
+futures = "0.3"
+tokio-stream = { version = "0.1", features = ["sync"] }
+sha2 = "0.10"
+blake3 = "1.5"
+hmac = "0.12"
+hkdf = "0.12"
+hex = "0.4"
+getrandom = "0.2"
+subtle = "2.6"
+zeroize = { version = "1.8", features = ["derive"] }
+secrecy = "0.10"
+rust_decimal = { version = "1.36", features = ["serde-with-str"] }
+rusqlite = { version = "0.32", features = ["bundled", "backup"] }
+r2d2 = "0.8"
+r2d2_sqlite = "0.25"
+aes-gcm = "0.10"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+rust-embed = { version = "8", features = ["include-exclude"] }
+mime_guess = "2"
+uuid = { version = "1", features = ["v4", "serde"] }
+chrono = { version = "0.4", features = ["serde"] }
+thiserror = "1"
+clap = { version = "4", features = ["derive", "env"] }
+directories = "5"
+bytes = "1"
+open = "5"
+toml = "0.8"
+
+[dev-dependencies]
+tempfile = "3"
+
+[profile.release]
+opt-level = 3
+lto = "fat"
+codegen-units = 1
+panic = "abort"
+strip = "symbols"
+debug = false
+
+[profile.release.package."*"]
+opt-level = 3

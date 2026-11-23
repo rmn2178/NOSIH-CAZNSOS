@@ -1,0 +1,91 @@
+name: Build NOSIH-CAZNSOS
+
+on:
+  push:
+    branches: [main, master]
+    tags: ["v*"]
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    name: Build Windows x86_64 (.exe)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
+      - uses: Swatinem/rust-cache@v2
+      - name: Run Rust test suite on Windows
+        run: cargo test --all-targets
+      - name: Build release Windows .exe
+        run: cargo build --release --target x86_64-pc-windows-msvc
+      - name: Smoke-test nosih-caznsos.exe
+        shell: pwsh
+        run: |
+          $exe = "target\x86_64-pc-windows-msvc\release\nosih-caznsos.exe"
+          & $exe --version
+          & $exe --self-test --stub-provider
+      - name: Compute SHA-256 checksum
+        shell: pwsh
+        run: |
+          $hash = (Get-FileHash "target\x86_64-pc-windows-msvc\release\nosih-caznsos.exe" -Algorithm SHA256).Hash
+          "$hash  nosih-caznsos.exe" | Out-File -Encoding ascii "sha.txt"
+          Get-Content sha.txt
+      - name: Upload Windows .exe artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: NOSIH-CAZNSOS-windows-x86_64
+          path: |
+            target/x86_64-pc-windows-msvc/release/nosih-caznsos.exe
+            sha.txt
+          retention-days: 90
+      - name: Publish GitHub Release on tag
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            target/x86_64-pc-windows-msvc/release/nosih-caznsos.exe
+            sha.txt
+          generate_release_notes: true
+
+  linux:
+    name: Build Linux x86_64 binary
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Build release Linux binary
+        run: cargo build --release
+      - name: Smoke-test Linux binary
+        run: ./target/release/nosih-caznsos --self-test --stub-provider
+      - name: Upload Linux artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: NOSIH-CAZNSOS-linux-x86_64
+          path: target/release/nosih-caznsos
+      - name: Publish Linux binary on tag
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: target/release/nosih-caznsos
+
+  checks:
+    name: Clippy & Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+      - uses: Swatinem/rust-cache@v2
+      - name: Clippy strict (zero warnings)
+        run: cargo clippy --all-targets -- -D warnings
+      - name: Run unit, integration, and doc tests
+        run: cargo test

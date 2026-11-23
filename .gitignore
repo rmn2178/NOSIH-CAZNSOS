@@ -1,0 +1,17 @@
+/target
+**/*.rs.bk
+*.db
+*.db-shm
+*.db-wal
+*.pdb
+.env
+local_key
+admin_token
+secrets/
+audit/
+bom.json
+lcov.info
+cov.txt
+geiger.txt
+sha.txt
+oha.json

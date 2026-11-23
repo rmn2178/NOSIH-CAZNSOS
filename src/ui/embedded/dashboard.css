@@ -1,0 +1,214 @@
+/* 4-Card Telemetry Overview Grid (Supabase-Inspired Dark Monochrome Layout) */
+.overview-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.kpi-strip {
+  display: flex;
+  align-items: baseline;
+  gap: 28px;
+  flex-wrap: wrap;
+}
+
+.kpi-item {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.kpi-value {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--accent-white);
+  letter-spacing: -0.02em;
+}
+
+.kpi-label {
+  font-size: 16px;
+  font-weight: 400;
+  color: var(--text-secondary);
+}
+
+.window-select {
+  background: var(--bg-card);
+  color: var(--text-primary);
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  padding: 7px 14px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.telemetry-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+  margin-bottom: 18px;
+}
+
+@media (max-width: 1020px) {
+  .telemetry-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 600px) {
+  .telemetry-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.metric-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  padding: 16px 16px 12px 16px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-height: 215px;
+  transition: border-color 0.15s ease;
+}
+
+.metric-card:hover {
+  border-color: var(--border-strong);
+}
+
+.metric-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.metric-title {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+
+.metric-big {
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--accent-white);
+  font-variant-numeric: tabular-nums;
+}
+
+.metric-counters {
+  display: flex;
+  gap: 14px;
+  text-align: right;
+}
+
+.metric-stat-label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+}
+
+.dot-warn {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--bar-warn);
+  display: inline-block;
+}
+
+.dot-err {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--bar-err);
+  display: inline-block;
+}
+
+.metric-stat-val {
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--text-primary);
+  margin-top: 3px;
+  font-variant-numeric: tabular-nums;
+}
+
+.bar-chart {
+  height: 92px;
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  padding-top: 8px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.bar-col {
+  flex: 1;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: stretch;
+}
+
+.bar-seg-ok {
+  background: var(--bar-ok);
+  border-radius: 1px 1px 0 0;
+  min-height: 0;
+}
+
+.bar-seg-warn {
+  background: var(--bar-warn);
+  min-height: 0;
+}
+
+.bar-seg-err {
+  background: var(--bar-err);
+  min-height: 0;
+}
+
+.bar-timestamps {
+  display: flex;
+  justify-content: space-between;
+  font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+  font-size: 10px;
+  color: var(--text-muted);
+  margin-top: 8px;
+}
+
+.telemetry-wrap {
+  position: relative;
+}
+
+.carousel-btn {
+  position: absolute;
+  right: -12px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  border: 1px solid var(--border-strong);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 16px;
+  z-index: 2;
+}
+
+.carousel-btn:hover {
+  background: var(--grey-hover);
+}

@@ -1,0 +1,43 @@
+/* NOSIH-CAZNSOS Dual Light & Dark Monochrome Design System */
+:root,
+[data-theme="dark"] {
+  --bg-canvas: #0b0b0c;
+  --bg-surface: #121213;
+  --bg-card: #161618;
+  --bg-elevated: #1e1e21;
+  --bg-input: #0e0e10;
+  --border-subtle: #242428;
+  --border-strong: #34343a;
+  --text-primary: #f5f5f7;
+  --text-secondary: #9a9aa3;
+  --text-muted: #686872;
+  --accent-white: #ffffff;
+  --accent-black: #0a0a0b;
+  --grey-hover: #27272a;
+  --bar-ok: #3ecf8e;
+  --bar-warn: #f59e0b;
+  --bar-err: #ef4444;
+  --code-bg: #1f1f23;
+  --chat-reply: #d4d4d8;
+}
+
+[data-theme="light"] {
+  --bg-canvas: #f5f5f7;
+  --bg-surface: #ffffff;
+  --bg-card: #ffffff;
+  --bg-elevated: #f1f1f4;
+  --bg-input: #fafafa;
+  --border-subtle: #e4e4e7;
+  --border-strong: #d4d4d8;
+  --text-primary: #09090b;
+  --text-secondary: #52525b;
+  --text-muted: #71717a;
+  --accent-white: #09090b;
+  --accent-black: #ffffff;
+  --grey-hover: #e4e4e7;
+  --bar-ok: #10b981;
+  --bar-warn: #d97706;
+  --bar-err: #dc2626;
+  --code-bg: #f1f1f4;
+  --chat-reply: #27272a;
+}

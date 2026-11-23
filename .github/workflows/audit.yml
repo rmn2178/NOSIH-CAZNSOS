@@ -1,0 +1,73 @@
+name: Audit NOSIH-CAZNSOS
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch:
+  schedule:
+    - cron: "0 6 * * 1"
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  static:
+    name: Static & Security Invariants
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+      - uses: Swatinem/rust-cache@v2
+      - name: Clippy strict
+        run: cargo clippy --all-targets -- -D warnings
+      - name: Exact 100 Rust source files in src/
+        run: |
+          n=$(find src -name '*.rs' | wc -l)
+          echo "src/*.rs count = $n"
+          test "$n" -eq 100 || (echo "FAIL: file count $n != 100" && exit 1)
+      - name: No unsafe code
+        run: |
+          if grep -rn "unsafe " src/ ; then
+            echo "FAIL: unsafe found"; exit 1
+          fi
+      - name: Authorized<T> constructor is private
+        run: |
+          if grep -n "pub fn new" src/types/authorized.rs ; then
+            echo "FAIL: pub fn new on Authorized<_>"; exit 1
+          fi
+      - name: No f64 in money path
+        run: |
+          if grep -rn "f64" src/plane1/budget/ src/types/decimal.rs ; then
+            echo "FAIL: f64 in money path"; exit 1
+          fi
+      - name: No println! outside main.rs
+        run: |
+          if grep -rn "println!" src/ --exclude=main.rs ; then
+            echo "FAIL: println! outside main.rs"; exit 1
+          fi
+      - name: No std::sync::Mutex in src/
+        run: |
+          if grep -rn "std::sync::Mutex" src/ ; then
+            echo "FAIL: std::sync::Mutex found"; exit 1
+          fi
+
+  test-matrix:
+    name: Cross-Platform Tests (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Run cargo test
+        run: cargo test
+      - name: Run built-in --self-test
+        run: cargo run --release --bin nosih-caznsos -- --self-test --stub-provider

@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>NOSIH-CAZNSOS — Zero-Trust Carbon-Aware LLM Proxy</title>
+  <link rel="stylesheet" href="/theme.css"/>
+  <link rel="stylesheet" href="/app.css"/>
+  <link rel="stylesheet" href="/dashboard.css"/>
+</head>
+<body>
+  <header>
+    <div class="brand"><img src="/logo.svg" alt="NOSIH"/> NOSIH-CAZNSOS</div>
+    <div class="row" style="margin:0">
+      <span id="carbon-pill" class="badge">Carbon: -- gCO2/kWh</span>
+      <span id="merkle-pill" class="badge">MTLog: 0 leaves</span>
+      <button id="theme-toggle" class="secondary" title="Toggle Light / Dark Theme">Light Mode</button>
+    </div>
+  </header>
+  <nav>
+    <button data-tab="overview" class="active">Overview</button>
+    <button data-tab="chat">Chat</button>
+    <button data-tab="keys">Keys</button>
+    <button data-tab="config">Config</button>
+    <button data-tab="logs">Live Logs (SSE)</button>
+    <button data-tab="viz">Graphs (Pure Rust)</button>
+    <button data-tab="export">Export Any File</button>
+  </nav>
+  <main>
+    <div class="card row">
+      <input id="local-key" type="password" placeholder="Local API Key (sk-nosih-...)" style="flex:1"/>
+      <input id="admin-token" type="password" placeholder="Admin Token (adm-...)" style="flex:1"/>
+      <button id="overview-refresh" class="secondary">Sync Dashboard</button>
+    </div>
+
+    <section id="tab-overview" class="panel active">
+      <div class="overview-header">
+        <div class="kpi-strip">
+          <div class="kpi-item"><span id="kpi-total-reqs" class="kpi-value">0</span><span class="kpi-label">Total Requests</span></div>
+          <div class="kpi-item"><span id="kpi-success-rate" class="kpi-value">100.0%</span><span class="kpi-label">Success Rate</span></div>
+        </div>
+        <select id="window-select" class="window-select">
+          <option value="15">Last 15 minutes</option>
+          <option value="60" selected>Last 60 minutes</option>
+          <option value="1440">Last 24 hours</option>
+        </select>
+      </div>
+      <div class="telemetry-wrap"><div id="telemetry-grid" class="telemetry-grid"></div><button id="carousel-next" class="carousel-btn" title="Switch API / Plane View">&rsaquo;</button></div>
+    </section>
+
+    <section id="tab-chat" class="panel">
+      <div class="card">
+        <div class="row">
+          <select id="model-select">
+            <option value="nosih-auto">nosih-auto (Carbon-Conformal Router)</option>
+            <option value="nosih-symbolic">nosih-symbolic (CPU 4.5W $0)</option>
+            <option value="nosih-small">nosih-small</option>
+            <option value="nosih-medium">nosih-medium</option>
+            <option value="nosih-large">nosih-large</option>
+          </select>
+          <select id="origin-select">
+            <option value="user">Origin: USER_DIRECT</option>
+            <option value="erp">Origin: SIGNED_ERP</option>
+            <option value="untrusted">Origin: UNTRUSTED (PCSP C-DoW Cap)</option>
+          </select>
+        </div>
+        <div id="chat-log"></div>
+        <div class="row">
+          <input id="chat-input" type="text" placeholder="Ask anything or test math e.g. (50000 * 0.18) + 1000" style="flex:1"/>
+          <button id="chat-send" class="primary">Send</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="tab-keys" class="panel">
+      <div class="card">
+        <h3>Upload Upstream Provider API Keys (JSON, Array, JSONL, or .env)</h3>
+        <div class="row" style="margin-top:10px">
+          <select id="key-provider">
+            <option value="openai">openai</option>
+            <option value="anthropic">anthropic</option>
+            <option value="gemini">gemini</option>
+            <option value="groq">groq</option>
+            <option value="mistral">mistral</option>
+            <option value="together">together</option>
+            <option value="openrouter">openrouter</option>
+            <option value="cohere">cohere</option>
+            <option value="ollama">ollama</option>
+            <option value="openai_compatible">openai_compatible</option>
+          </select>
+          <input id="key-secret" type="password" placeholder="Upstream API Key" style="flex:1"/>
+          <input id="key-base-url" type="text" placeholder="Optional Custom Base URL" style="flex:1"/>
+          <button id="key-add" class="primary">Encrypt & Save</button>
+        </div>
+        <textarea id="key-bulk" placeholder="Or paste .env lines (OPENAI_API_KEY=sk-...) or JSON array here"></textarea>
+        <div class="row" style="margin-top:8px">
+          <button id="key-bulk-btn" class="primary">Bulk Upload</button>
+          <button id="key-refresh" class="secondary">Refresh Keys</button>
+        </div>
+        <table><thead><tr><th>Provider</th><th>Label</th><th>Masked Key</th><th>Limit/Day</th><th>Actions</th></tr></thead><tbody id="keys-tbody"></tbody></table>
+      </div>
+    </section>
+
+    <section id="tab-config" class="panel">
+      <div class="card">
+        <h3>Router & Tier Configuration</h3>
+        <textarea id="config-json" style="min-height:240px;font-family:monospace;margin-top:10px"></textarea>
+        <div class="row" style="margin-top:10px">
+          <button id="cfg-load" class="secondary">Load Config</button>
+          <button id="cfg-save" class="primary">Save Config</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="tab-logs" class="panel">
+      <div class="card">
+        <div class="row">
+          <select id="log-plane"><option value="">All Planes</option><option value="plane1">Plane I</option><option value="plane2">Plane II</option><option value="plane3">Plane III</option><option value="kernel">Kernel</option></select>
+          <button id="log-connect" class="primary">Connect Live SSE</button>
+        </div>
+        <div id="sse-log"></div>
+      </div>
+    </section>
+
+    <section id="tab-viz" class="panel">
+      <div class="card">
+        <h3>Pure-Rust Monochrome SVG Telemetry Graphs</h3>
+        <div class="row">
+          <select id="viz-select">
+            <option value="all">Full 2x2 Dashboard</option>
+            <option value="carbon">24h Diurnal Carbon Curve</option>
+            <option value="latency">Stage Latency Timeline</option>
+            <option value="planes">Tri-Plane Distribution</option>
+          </select>
+          <button id="viz-refresh" class="primary">Render Pure-Rust SVG</button>
+          <button id="viz-download" class="secondary">Download SVG</button>
+        </div>
+        <div id="viz-container" style="margin-top:12px;overflow-x:auto"></div>
+      </div>
+    </section>
+
+    <section id="tab-export" class="panel">
+      <div class="card">
+        <div class="row">
+          <select id="export-fmt">
+            <option value="json">Structured JSON (.json)</option>
+            <option value="jsonl">JSON Lines (.jsonl)</option>
+            <option value="csv">CSV Spreadsheet (.csv)</option>
+            <option value="tsv">TSV Table (.tsv)</option>
+            <option value="md">Markdown Report (.md)</option>
+            <option value="txt">Plain Text Log (.txt)</option>
+            <option value="xml">XML Audit (.xml)</option>
+            <option value="otel">OpenTelemetry JSON (.otel.json)</option>
+            <option value="merkle">CCEC Merkle Proof (.merkle.json)</option>
+            <option value="svg">Pure-Rust Graph (.svg)</option>
+            <option value="html">Standalone Visual Report (.html)</option>
+          </select>
+          <button id="export-btn" class="primary">Save to Downloads & Preview</button>
+          <button id="export-dl-btn" class="secondary">Direct Browser Download</button>
+        </div>
+        <textarea id="export-out" style="min-height:260px;font-family:monospace"></textarea>
+      </div>
+    </section>
+  </main>
+  <script src="/api.js"></script>
+  <script src="/charts.js"></script>
+  <script src="/app.js"></script>
+</body>
+</html>
