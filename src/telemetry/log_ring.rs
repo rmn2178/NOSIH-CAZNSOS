@@ -10,7 +10,7 @@ use std::sync::Arc;
 use tokio::sync::{RwLock, broadcast, mpsc, oneshot};
 
 enum RingCmd {
-    Push(KernelEvent),
+    Push(Box<KernelEvent>),
     Snapshot(oneshot::Sender<Vec<KernelEvent>>),
 }
 
@@ -66,7 +66,7 @@ impl LogRing {
                             if buf.len() >= cap {
                                 buf.pop_front();
                             }
-                            buf.push_back(ev);
+                            buf.push_back(*ev);
                         }
                         RingCmd::Snapshot(reply) => {
                             let _ = reply.send(buf.iter().cloned().collect());
@@ -144,7 +144,7 @@ impl LogRing {
         let _ = self.tx.send(ev.clone());
 
         if let Some(ref rtx) = self.ring_tx {
-            let _ = rtx.send(RingCmd::Push(ev.clone()));
+            let _ = rtx.send(RingCmd::Push(Box::new(ev.clone())));
         } else if let Ok(mut guard) = self.fallback_ring.try_write() {
             if guard.len() >= self.fallback_capacity {
                 guard.pop_front();
