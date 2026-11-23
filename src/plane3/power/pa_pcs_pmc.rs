@@ -14,7 +14,6 @@ pub fn authorize_warmup(call_auth: &Authorized<ProviderCall>) -> Authorized<Prov
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use crate::plane3::power::controller::ProviderPowerManager;
 
     #[test]

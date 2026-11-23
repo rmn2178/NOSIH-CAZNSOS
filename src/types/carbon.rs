@@ -13,7 +13,7 @@ pub struct CarbonIntensity {
 }
 
 /// Whether the carbon intensity reading came from live API observation or diurnal forecast.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum CarbonSource {
     /// Built-in deterministic diurnal prior + OU residual.

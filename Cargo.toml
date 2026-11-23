@@ -48,7 +48,6 @@ thiserror = "1"
 clap = { version = "4", features = ["derive", "env"] }
 directories = "5"
 bytes = "1"
-open = "5"
 toml = "0.8"
 
 [dev-dependencies]
