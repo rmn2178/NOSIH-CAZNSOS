@@ -10,7 +10,11 @@ use std::time::{SystemTime, UNIX_EPOCH};
 /// Liveness endpoint returning version, active carbon intensity, and Merkle root.
 pub async fn health(State(state): State<Arc<AppState>>) -> Json<Value> {
     let carbon = state.kernel.forecaster.read().await.current();
-    let sth = state.kernel.merkle.latest_sth().ok();
+    let merkle = Arc::clone(&state.kernel.merkle);
+    let sth = tokio::task::spawn_blocking(move || merkle.latest_sth().ok())
+        .await
+        .ok()
+        .flatten();
     Json(json!({
         "status": "ok",
         "name": "nosih-caznsos",

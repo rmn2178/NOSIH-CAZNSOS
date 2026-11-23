@@ -93,6 +93,24 @@ impl Settings {
         Self::default()
     }
 
+    /// Config TOML file path inside `data_dir`.
+    pub fn config_path(&self) -> PathBuf {
+        self.data_dir.join("config.toml")
+    }
+
+    /// Persist current settings to `config.toml` inside `data_dir`.
+    pub fn save(&self) -> Result<PathBuf, String> {
+        let path = self.config_path();
+        if let Some(parent) = path.parent() {
+            if !parent.as_os_str().is_empty() {
+                std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+            }
+        }
+        let encoded = toml::to_string_pretty(self).map_err(|e| e.to_string())?;
+        std::fs::write(&path, encoded).map_err(|e| e.to_string())?;
+        Ok(path)
+    }
+
     /// SQLite database file path.
     pub fn db_path(&self) -> PathBuf {
         self.data_dir.join("nosih.db")

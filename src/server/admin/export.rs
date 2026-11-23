@@ -157,7 +157,11 @@ pub async fn export_logs(
             .collect()
     };
     let current_carbon = state.kernel.forecaster.read().await.current().gco2_per_kwh;
-    let sth_opt = state.kernel.merkle.latest_sth().ok();
+    let merkle_for_sth = Arc::clone(&state.kernel.merkle);
+    let sth_opt = tokio::task::spawn_blocking(move || merkle_for_sth.latest_sth().ok())
+        .await
+        .ok()
+        .flatten();
     let is_light = q.theme.eq_ignore_ascii_case("light");
 
     let fmt = q.format.trim().to_lowercase();
@@ -209,7 +213,10 @@ pub async fn export_logs(
             ("otel.json", "application/json", serde_json::to_string_pretty(&doc).unwrap_or_default())
         }
         "merkle" => {
-            let sth = state.kernel.merkle.latest_sth()?;
+            let merkle_for_export = Arc::clone(&state.kernel.merkle);
+            let sth = tokio::task::spawn_blocking(move || merkle_for_export.latest_sth())
+                .await
+                .map_err(|e| AppError::Internal(format!("merkle_join_err: {e}")))??;
             let doc = if sth.tree_size == 0 {
                 json!({
                     "tree_size": 0,
@@ -220,7 +227,11 @@ pub async fn export_logs(
                 })
             } else {
                 let idx = q.leaf.unwrap_or_else(|| sth.tree_size.saturating_sub(1));
-                let (proof, sth, payload) = state.kernel.merkle.inclusion_proof(idx)?;
+                let merkle_for_proof = Arc::clone(&state.kernel.merkle);
+                let (proof, sth, payload) =
+                    tokio::task::spawn_blocking(move || merkle_for_proof.inclusion_proof(idx))
+                        .await
+                        .map_err(|e| AppError::Internal(format!("merkle_join_err: {e}")))??;
                 json!({
                     "tree_size": sth.tree_size,
                     "leaf_index": idx,
@@ -590,12 +601,15 @@ pub async fn metrics_cards(
     let now = chrono::Utc::now();
     let start = now - chrono::Duration::minutes(window_mins);
     let events = state.log_ring.snapshot().await;
-    let mtlog_leaves = state
-        .kernel
-        .merkle
-        .latest_sth()
-        .map(|s| s.tree_size)
-        .unwrap_or(0);
+    let merkle_for_cards = Arc::clone(&state.kernel.merkle);
+    let mtlog_leaves = tokio::task::spawn_blocking(move || {
+        merkle_for_cards
+            .latest_sth()
+            .map(|s| s.tree_size)
+            .unwrap_or(0)
+    })
+    .await
+    .unwrap_or(0);
 
     let bucket_count = 48usize;
     let span_secs = (window_mins * 60).max(1) as f64;

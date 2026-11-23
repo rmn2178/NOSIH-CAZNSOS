@@ -55,6 +55,30 @@ impl ExactDecimal {
     pub fn checked_add(self, rhs: Self) -> Option<Self> {
         self.0.checked_add(rhs.0).map(|d| Self(d.normalize()))
     }
+
+    /// Checked multiplication.
+    pub fn checked_mul(self, rhs: Self) -> Option<Self> {
+        self.0.checked_mul(rhs.0).map(|d| Self(d.normalize()))
+    }
+
+    /// Checked division.
+    pub fn checked_div(self, rhs: Self) -> Option<Self> {
+        if rhs.0.is_zero() {
+            return None;
+        }
+        self.0.checked_div(rhs.0).map(|d| Self(d.normalize()))
+    }
+
+    /// Compute exact token cost in USD: `(total_tokens * usd_per_million) / 1_000_000`.
+    pub fn token_cost_usd(total_tokens: u64, usd_per_million: Self) -> Self {
+        let tokens = Decimal::from(total_tokens);
+        let million = Decimal::from(1_000_000u64);
+        let raw = tokens
+            .checked_mul(usd_per_million.0)
+            .and_then(|num| num.checked_div(million))
+            .unwrap_or(Decimal::ZERO);
+        Self(raw.round_dp(6).normalize())
+    }
 }
 
 impl Add for ExactDecimal {
@@ -88,5 +112,14 @@ mod tests {
         assert!(a.checked_sub_nonneg(b).is_none());
         let c = ExactDecimal::parse_str("3.25").unwrap();
         assert_eq!(a.checked_sub_nonneg(c).unwrap().to_string(), "6.75");
+    }
+
+    #[test]
+    fn exact_decimal_token_cost_usd() {
+        let rate = ExactDecimal::from_i64_with_scale(25, 2); // $0.25 / 1M tokens
+        let cost = ExactDecimal::token_cost_usd(1_000_000, rate);
+        assert_eq!(cost.to_string(), "0.25");
+        let small = ExactDecimal::token_cost_usd(1_000, rate);
+        assert_eq!(small.to_string(), "0.00025");
     }
 }

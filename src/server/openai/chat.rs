@@ -3,6 +3,8 @@
 use crate::app::AppState;
 use crate::error::api_error::AppError;
 use crate::error::result::AppResult;
+use crate::kernel::NosihKernel;
+use crate::kernel::request::KernelContext;
 use crate::kernel::stage1_ingress::run_stage1;
 use crate::kernel::stage2_cache::run_stage2;
 use crate::kernel::stage3_dispatch::run_stage3;
@@ -10,7 +12,7 @@ use crate::kernel::stage4_verify::run_stage4;
 use crate::kernel::stage5_mint::run_stage5;
 use crate::kernel::stage6_execute::run_stage6;
 use crate::kernel::stage7_update::run_stage7;
-use crate::plane3::providers::traits::{ChatRequest, ProviderOutput};
+use crate::plane3::providers::traits::{ChatRequest, ProviderOutput, SseStream};
 use crate::server::openai::auth::LocalAuthInfo;
 use axum::body::Body;
 use axum::extract::{Extension, State};
@@ -18,10 +20,72 @@ use axum::http::{HeaderValue, StatusCode, header};
 use axum::response::{IntoResponse, Response};
 use axum::Json;
 use bytes::Bytes;
+use futures::StreamExt;
 use serde_json::{Value, json};
 use std::sync::Arc;
 use std::time::{Instant, SystemTime, UNIX_EPOCH};
 use uuid::Uuid;
+
+struct StreamTeeState {
+    stream: SseStream,
+    kernel: Arc<NosihKernel>,
+    ctx: KernelContext,
+    t0: Instant,
+    warmup_j: f64,
+    tokens_in: u64,
+    tokens_out_usage: Option<u64>,
+    accumulated: String,
+    line_buf: String,
+    had_error: bool,
+}
+
+fn parse_sse_line(
+    line: &str,
+    accumulated: &mut String,
+    tokens_in: &mut u64,
+    tokens_out_usage: &mut Option<u64>,
+) {
+    let trimmed = line.trim();
+    let Some(data) = trimmed.strip_prefix("data:") else {
+        return;
+    };
+    let payload = data.trim();
+    if payload.is_empty() || payload == "[DONE]" {
+        return;
+    }
+    if let Ok(v) = serde_json::from_str::<Value>(payload) {
+        if let Some(delta) = v
+            .pointer("/choices/0/delta/content")
+            .and_then(|c| c.as_str())
+        {
+            accumulated.push_str(delta);
+        }
+        if let Some(pt) = v.pointer("/usage/prompt_tokens").and_then(|n| n.as_u64()) {
+            *tokens_in = pt;
+        }
+        if let Some(ct) = v
+            .pointer("/usage/completion_tokens")
+            .and_then(|n| n.as_u64())
+        {
+            *tokens_out_usage = Some(ct);
+        }
+    }
+}
+
+fn extract_sse_delta(
+    chunk: &[u8],
+    line_buf: &mut String,
+    accumulated: &mut String,
+    tokens_in: &mut u64,
+    tokens_out_usage: &mut Option<u64>,
+) {
+    let text = String::from_utf8_lossy(chunk);
+    line_buf.push_str(&text);
+    while let Some(pos) = line_buf.find('\n') {
+        let line: String = line_buf.drain(..=pos).collect();
+        parse_sse_line(&line, accumulated, tokens_in, tokens_out_usage);
+    }
+}
 
 /// Main OpenAI-compatible chat completions endpoint running the 7-stage NOSIH kernel.
 pub async fn chat_completions(
@@ -76,37 +140,96 @@ pub async fn chat_completions(
             true,
         )
         .await;
-        return Ok(build_local_response("nosih-symbolic", &sym_ans, is_stream, co2_g, leaf));
+        return Ok(build_local_response(
+            "nosih-symbolic",
+            &sym_ans,
+            is_stream,
+            co2_g,
+            leaf,
+        ));
     }
 
     // Stage 4: Static Kahn + IFC DAG verification
     run_stage4(&state.kernel, &ctx).await?;
 
     // Stage 5: Mint, attenuate & verify SPCCE-Macaroon -> Authorized<ProviderCall>
-    let auth_call = run_stage5(&state.kernel, &ctx).await?;
+    let auth_call = run_stage5(&state.kernel, &mut ctx).await?;
 
     // Stage 6: Pre-authorized PA-PCS-PMC warmup + upstream execution
-    let (output, warmup_j) = run_stage6(&state.kernel, &state.providers, &ctx, auth_call, &req).await?;
+    let (output, warmup_j) =
+        run_stage6(&state.kernel, &state.providers, &ctx, auth_call, &req).await?;
 
     match output {
         ProviderOutput::Stream(stream) => {
-            let (_co2_g, _leaf) = run_stage7(
-                &state.kernel,
-                &ctx,
-                "",
-                prompt.split_whitespace().count() as u64,
-                0,
-                t0.elapsed().as_secs_f64() * 1000.0,
+            let tier_str = ctx.selected_tier.as_str().to_string();
+            let tee_state = StreamTeeState {
+                stream,
+                kernel: Arc::clone(&state.kernel),
+                ctx,
+                t0,
                 warmup_j,
-                true,
-            )
-            .await;
-            let mut resp = Response::new(Body::from_stream(stream));
+                tokens_in: prompt.split_whitespace().count().max(1) as u64,
+                tokens_out_usage: None,
+                accumulated: String::new(),
+                line_buf: String::new(),
+                had_error: false,
+            };
+            let inspected = futures::stream::unfold(tee_state, |mut st| async move {
+                match st.stream.next().await {
+                    Some(Ok(chunk)) => {
+                        extract_sse_delta(
+                            &chunk,
+                            &mut st.line_buf,
+                            &mut st.accumulated,
+                            &mut st.tokens_in,
+                            &mut st.tokens_out_usage,
+                        );
+                        Some((Ok(chunk), st))
+                    }
+                    Some(Err(e)) => {
+                        st.had_error = true;
+                        Some((Err(e), st))
+                    }
+                    None => {
+                        if !st.line_buf.is_empty() {
+                            let rem = std::mem::take(&mut st.line_buf);
+                            parse_sse_line(
+                                &rem,
+                                &mut st.accumulated,
+                                &mut st.tokens_in,
+                                &mut st.tokens_out_usage,
+                            );
+                        }
+                        let tout = st.tokens_out_usage.unwrap_or_else(|| {
+                            st.accumulated.split_whitespace().count() as u64
+                        });
+                        let _ = run_stage7(
+                            &st.kernel,
+                            &st.ctx,
+                            &st.accumulated,
+                            st.tokens_in,
+                            tout,
+                            st.t0.elapsed().as_secs_f64() * 1000.0,
+                            st.warmup_j,
+                            !st.had_error,
+                        )
+                        .await;
+                        None
+                    }
+                }
+            });
+
+            let mut resp = Response::new(Body::from_stream(inspected));
             *resp.status_mut() = StatusCode::OK;
-            resp.headers_mut()
-                .insert(header::CONTENT_TYPE, HeaderValue::from_static("text/event-stream"));
+            resp.headers_mut().insert(
+                header::CONTENT_TYPE,
+                HeaderValue::from_static("text/event-stream"),
+            );
             resp.headers_mut()
                 .insert(header::CACHE_CONTROL, HeaderValue::from_static("no-cache"));
+            if let Ok(hv) = HeaderValue::from_str(&tier_str) {
+                resp.headers_mut().insert("x-nosih-tier", hv);
+            }
             Ok(resp)
         }
         ProviderOutput::Complete(body_json, tin, tout) => {
@@ -166,8 +289,10 @@ fn build_local_response(
         let sse = format!("data: {c1}\n\ndata: {c2}\n\ndata: [DONE]\n\n");
         let mut r = Response::new(Body::from(sse));
         *r.status_mut() = StatusCode::OK;
-        r.headers_mut()
-            .insert(header::CONTENT_TYPE, HeaderValue::from_static("text/event-stream"));
+        r.headers_mut().insert(
+            header::CONTENT_TYPE,
+            HeaderValue::from_static("text/event-stream"),
+        );
         r
     } else {
         Json(json!({

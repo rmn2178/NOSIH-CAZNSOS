@@ -15,10 +15,10 @@ Base URL (default loopback binding): `http://127.0.0.1:8787`
 
 | Method | Path | Description |
 | :--- | :--- | :--- |
-| `POST` | `/v1/chat/completions` | Streaming (`stream: true`) and non-streaming chat completions through the 7-stage NOSIH kernel. Optional `X-NOSIH-Origin: user\|erp\|untrusted` header sets ingress provenance. Returns `x-nosih-tier`, `x-nosih-co2-g`, and `x-nosih-merkle-leaf` response headers. |
+| `POST` | `/v1/chat/completions` | Streaming (`stream: true`) and non-streaming chat completions through the 7-stage NOSIH kernel. Optional `X-NOSIH-Origin: user\|det\|untrusted` header sets ingress provenance (privileged origins such as `human`, `gov`, `erp`, `policy` require a valid `X-NOSIH-Origin-Sig` HMAC-SHA256 signature or `X-NOSIH-Admin` token; unverified requests are capped at `UserDirect`). Returns `x-nosih-tier`, `x-nosih-co2-g`, and `x-nosih-merkle-leaf` response headers. |
 | `GET` | `/v1/models` | Lists virtual models (`nosih-auto`, `nosih-symbolic`, `nosih-small`, `nosih-medium`, `nosih-large`) and configured upstream models. |
 | `POST` | `/v1/embeddings` | Deterministic 320D signed feature-hash local embeddings (OpenAI response schema). |
-| `GET` | `/v1/health` | Unauthenticated liveness probe returning live grid carbon intensity (`carbon_gco2_kwh`) and `merkle_tree_size`. |
+| `GET` | `/v1/health` | Unauthenticated liveness probe returning live grid carbon intensity (`carbon_gco2_per_kwh`) and `merkle_tree_size`. |
 
 ---
 
@@ -32,7 +32,7 @@ Base URL (default loopback binding): `http://127.0.0.1:8787`
 | `POST` | `/admin/keys/:id/rotate` | `{"api_key": "..."}` | Atomically re-encrypts and rotates an existing key. |
 | `POST` | `/admin/keys/:id/test` | — | Fires a lightweight provider probe (supports OpenAI Bearer & Anthropic `x-api-key`) and returns `{ok, provider, latency_ms, detail}`. |
 | `GET` | `/admin/config` | — | Returns current runtime router, tier, and carbon settings. |
-| `PUT` | `/admin/config` | Settings JSON | Updates runtime configuration live. |
+| `PUT` / `POST` | `/admin/config` | Settings JSON | Updates runtime configuration live and persists it to `config.toml`. |
 | `GET` | `/admin/logs/stream` | `?plane=plane1\|plane2\|plane3\|kernel` | Live redacted Server-Sent Events (SSE) stream of kernel stage executions. |
 | `GET` | `/admin/metrics/cards` | `?window_mins=15\|60\|1440&view=api\|planes` | Returns KPI totals (`total_requests`, `success_rate`) and 4 cards × 48 stacked `ok`/`warn`/`err` buckets. |
 | `GET` | `/admin/viz/svg` | `?chart=all\|carbon\|latency\|planes&theme=dark\|light` | Returns pure-Rust zero-dependency `image/svg+xml` charts. |

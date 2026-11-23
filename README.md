@@ -27,7 +27,7 @@ Built as a single dependency-free Rust executable (`nosih-caznsos.exe` on Window
     ├───────────────────────────────────────┬───────────────────────────────────────┤
     │  STAGE 3 · Carbon-Conformal Dispatch & PCSP (Plane II + III)                  │
     │  Diurnal grid carbon C(t) + PID conformal band + LinUCB bandit                │
-    │  CPU Symbolic short-circuit (SafeDecimalAST math / TF-IDF policy RAG) -> $0   │
+    │  CPU Symbolic short-circuit (SafeDecimalAST deterministic math)         -> $0   │
     ├───────────────────────────────────────┬───────────────────────────────────────┤
     │  STAGE 4 · Static Kahn + IFC DAG Verification (Plane III)                     │
     │  Acyclic graph check · Information-Flow Control integrity/confidentiality     │
@@ -39,7 +39,7 @@ Built as a single dependency-free Rust executable (`nosih-caznsos.exe` on Window
     │  Authorized<ProviderWarmup> · AES-256-GCM vault decrypt (Zeroize on drop)     │
     ├───────────────────────────────────────┬───────────────────────────────────────┤
     │  STAGE 7 · CCEC + RFC 6962/9162 MTLog Commit & Redacted Telemetry (Kernel)    │
-    │  Scope-2 CO2 certificate · Ed25519 Signed Tree Head · Live SSE + SQLite WAL   │
+    │  Scope-2 CO2 certificate · HMAC-SHA256 Signed Tree Head · Live SSE + SQLite WAL   │
     └───────────────────────────────────────┴───────────────────────────────────────┘
 ```
 
@@ -52,7 +52,7 @@ Built as a single dependency-free Rust executable (`nosih-caznsos.exe` on Window
 | **OpenAI-Compatible Surface** | `POST /v1/chat/completions` (streaming SSE & non-streaming), `GET /v1/models`, `POST /v1/embeddings`, `GET /v1/health`. Virtual models: `nosih-auto`, `nosih-symbolic`, `nosih-small`, `nosih-medium`, `nosih-large`. |
 | **Zero-Trust Security (Plane I)** | `#![forbid(unsafe_code)]`, private `Authorized<ProviderCall>` & `Authorized<ProviderWarmup>` tokens, SPCCE-Macaroon capability caveats, AES-256-GCM key vault, `zeroize` on drop, automatic secret redaction (`<REDACTED:sha256-prefix>`), loopback binding, CSRF `X-NOSIH-Admin` header, strict CSP. |
 | **Carbon-Conformal Router (Plane II)** | 24h diurnal grid carbon forecaster, PID conformal prediction band, LinUCB contextual bandit, Provenance-Scoped Semantic Cache (PS-RCSC), and PCSP untrusted-origin C-DoW tier capping. |
-| **Neuro-Symbolic & Multi-Provider (Plane III)** | Deterministic CPU-only `SafeDecimalAST` math + TF-IDF policy RAG (`nosih-symbolic`), Kahn + IFC DAG verifier, `PA-PCS-PMC` connection warmer, and 10+ upstream providers. |
+| **Neuro-Symbolic & Multi-Provider (Plane III)** | Deterministic CPU-only `SafeDecimalAST` deterministic math (`nosih-symbolic`), Kahn + IFC DAG verifier, `PA-PCS-PMC` connection warmer, and 10+ upstream providers. |
 | **Embedded Web UI (Zero Node.js)** | Compiled into the binary via `rust-embed`. Includes Light & Dark monochrome theme toggle, 4-card 48-bucket stacked-bar API/Tri-Plane Overview dashboard, Chat, Multi-Key Upload (JSON / array / JSONL / `.env`), Config editor, Live SSE Log Viewer, Pure-Rust SVG Graphs, and Export tab. |
 | **Pure-Rust Visuals & 11-Format Export** | Zero-dependency Rust SVG chart renderer (`all`, `carbon`, `latency`, `planes` in Dark/Light palettes) and export to `json`, `jsonl`, `csv`, `tsv`, `md`, `txt`, `xml`, `otel`, `merkle`, `svg`, and standalone `html`. |
 | **Cryptographic Auditability** | CCEC Scope-2 carbon/cost ledger backed by an append-only RFC 6962/9162 Merkle Tree (`MTLog`) with distinct `LeafHash`/`NodeHash` newtypes and standalone `examples/verify_merkle.rs` verifier. |

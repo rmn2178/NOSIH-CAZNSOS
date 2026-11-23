@@ -18,7 +18,7 @@ use crate::plane2::conformal::pid::ConformalPidGate;
 use crate::plane2::pcsp::PcspPricer;
 use crate::plane3::power::controller::ProviderPowerManager;
 use crate::plane3::providers::chain::ProviderChain;
-use crate::security::local_key::LocalSecretToken;
+use crate::security::local_key::{LocalSecretToken, ensure_master_key};
 use crate::security::RateLimiter;
 use crate::storage::SqliteStorage;
 use crate::telemetry::log_ring::LogRing;
@@ -33,6 +33,8 @@ pub struct AppState {
     pub local_key: LocalSecretToken,
     /// Separate `/admin` token.
     pub admin_token: LocalSecretToken,
+    /// HMAC key for verifying cryptographically signed privileged `X-NOSIH-Origin` headers.
+    pub origin_hmac_key: KeyMaterial,
     /// SQLite WAL pooled storage.
     pub storage: Arc<SqliteStorage>,
     /// AES-256-GCM encrypted upstream provider key vault.
@@ -55,16 +57,23 @@ impl AppState {
         admin_token: LocalSecretToken,
     ) -> AppResult<Self> {
         let storage = Arc::new(SqliteStorage::open(&settings.db_path())?);
-        let vault_key = KeyMaterial::derive_from_seed(local_key.as_str().as_bytes(), b"NOSIH-VAULT-V1");
+        let (master_key, _) = ensure_master_key(&settings.data_dir)?;
+        let vault_key = KeyMaterial::derive_from_seed(master_key.as_bytes(), b"NOSIH-VAULT-V1");
         let vault = Arc::new(SecretVault::new(Arc::clone(&storage), vault_key));
 
-        let mac_root = KeyMaterial::derive_from_seed(local_key.as_str().as_bytes(), b"NOSIH-MAC-V1");
-        let sth_key = KeyMaterial::derive_from_seed(local_key.as_str().as_bytes(), b"NOSIH-STH-V1");
-        let manifest_key = KeyMaterial::derive_from_seed(local_key.as_str().as_bytes(), b"NOSIH-MAN-V1");
+        let mac_root = KeyMaterial::derive_from_seed(master_key.as_bytes(), b"NOSIH-MAC-V1");
+        let sth_key = KeyMaterial::derive_from_seed(master_key.as_bytes(), b"NOSIH-STH-V1");
+        let manifest_key = KeyMaterial::derive_from_seed(master_key.as_bytes(), b"NOSIH-MAN-V1");
+        let origin_hmac_key =
+            KeyMaterial::derive_from_seed(master_key.as_bytes(), b"NOSIH-ORIGIN-V1");
 
         let replay = Arc::new(JtiReplayStore::new(Arc::clone(&storage)));
         let budget = Arc::new(BudgetLedger::new(Arc::clone(&storage)));
-        let macaroon = Arc::new(MacaroonAuthority::new(mac_root, Arc::clone(&replay), Arc::clone(&budget)));
+        let macaroon = Arc::new(MacaroonAuthority::new(
+            mac_root,
+            Arc::clone(&replay),
+            Arc::clone(&budget),
+        ));
         let merkle = Arc::new(MerkleLog::new(Arc::clone(&storage), sth_key));
         let ccec = Arc::new(CarbonCertificateAuthority::new(Arc::clone(&merkle)));
         let manifest = Arc::new(ManifestGuard::new_default(manifest_key));
@@ -102,6 +111,7 @@ impl AppState {
             settings: RwLock::new(settings),
             local_key,
             admin_token,
+            origin_hmac_key,
             storage,
             vault,
             kernel,

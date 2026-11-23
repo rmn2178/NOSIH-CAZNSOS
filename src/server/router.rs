@@ -35,7 +35,10 @@ pub fn build_router(state: Arc<AppState>) -> Router {
         .route("/admin/keys/:id", delete(delete_key))
         .route("/admin/keys/:id/rotate", post(rotate_key))
         .route("/admin/keys/:id/test", post(test_key))
-        .route("/admin/config", get(get_config).post(update_config))
+        .route(
+            "/admin/config",
+            get(get_config).put(update_config).post(update_config),
+        )
         .route("/admin/export", get(export_logs).post(export_logs))
         .route("/admin/viz/svg", get(render_viz_svg))
         .route("/admin/metrics/cards", get(metrics_cards))

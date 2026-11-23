@@ -8,10 +8,8 @@ type HmacSha256 = Hmac<Sha256>;
 
 /// Compute domain-separated HMAC-SHA256 returning 32 raw bytes.
 pub fn hmac_sha256(key: &[u8], domain: &[u8], msg: &[u8]) -> [u8; 32] {
-    let mut mac = match <HmacSha256 as Mac>::new_from_slice(key) {
-        Ok(m) => m,
-        Err(_) => return [0u8; 32],
-    };
+    let mut mac = <HmacSha256 as Mac>::new_from_slice(key)
+        .expect("HMAC-SHA256 accepts keys of any length");
     mac.update(domain);
     mac.update(msg);
     let bytes = mac.finalize().into_bytes();

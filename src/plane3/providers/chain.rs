@@ -65,14 +65,21 @@ impl ProviderChain {
         auth: Authorized<ProviderCall>,
         req: &ChatRequest,
     ) -> AppResult<ProviderOutput> {
-        let provider = auth.payload().provider.as_str();
-        let model = auth.payload().model.as_str();
+        let provider = auth.payload().provider.clone();
+        let model = auth.payload().model.clone();
 
         if self.stub_mode || provider == "stub" {
-            return Ok(self.stub_response(model, req));
+            return Ok(self.stub_response(&model, req));
         }
 
-        let resolved = self.vault.resolve_for_provider(provider)?;
+        let vault = Arc::clone(&self.vault);
+        let provider_lookup = provider.clone();
+        let resolved = tokio::task::spawn_blocking(move || {
+            vault.resolve_for_provider(&provider_lookup)
+        })
+        .await
+        .map_err(|e| AppError::Internal(format!("vault_join_err: {e}")))??;
+
         let (api_key_secret, base_url) = match resolved {
             Some(k) => (Some(k.api_key), k.base_url),
             None if provider == "ollama" => (None, None),
@@ -88,14 +95,14 @@ impl ProviderChain {
             .unwrap_or("");
 
         if provider == "anthropic" {
-            call_anthropic(&self.client, base_url.as_deref(), api_key_ref, model, req).await
+            call_anthropic(&self.client, base_url.as_deref(), api_key_ref, &model, req).await
         } else {
             call_openai_compat(
                 &self.client,
-                provider,
+                &provider,
                 base_url.as_deref(),
                 api_key_ref,
-                model,
+                &model,
                 req,
             )
             .await

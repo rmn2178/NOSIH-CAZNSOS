@@ -61,7 +61,7 @@ async function refreshHealth() {
   try {
     const j = await window.NosihApi.getHealth();
     if (!j) return;
-    if ($('#carbon-pill')) $('#carbon-pill').textContent = `Carbon: ${Number(j.carbon_gco2_kwh).toFixed(0)} gCO2/kWh`;
+    if ($('#carbon-pill')) $('#carbon-pill').textContent = `Carbon: ${Number(j.carbon_gco2_per_kwh).toFixed(0)} gCO2/kWh`;
     if ($('#merkle-pill')) $('#merkle-pill').textContent = `MTLog: ${j.merkle_tree_size} leaves`;
   } catch (_) {}
 }

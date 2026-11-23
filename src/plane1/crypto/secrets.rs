@@ -13,11 +13,16 @@ impl KeyMaterial {
         Self(bytes)
     }
 
-    /// Generate fresh 256-bit key material via OS CSPRNG.
-    pub fn generate() -> Self {
+    /// Generate fresh 256-bit key material via OS CSPRNG, returning an error if entropy fails.
+    pub fn try_generate() -> Result<Self, getrandom::Error> {
         let mut bytes = [0u8; 32];
-        let _ = getrandom::getrandom(&mut bytes);
-        Self(bytes)
+        getrandom::getrandom(&mut bytes)?;
+        Ok(Self(bytes))
+    }
+
+    /// Generate fresh 256-bit key material via OS CSPRNG (aborts on CSPRNG failure; never zero-falls back).
+    pub fn generate() -> Self {
+        Self::try_generate().expect("OS CSPRNG failure while generating KeyMaterial")
     }
 
     /// Derive domain-separated 256-bit key material via HKDF-SHA256.

@@ -1,4 +1,5 @@
-//! Multi-format upstream key upload (JSON single/array, `.env`, JSONL), masking, rotation, and 1-token probe.
+//! Multi-format upstream key upload (JSON single/array, `.env`, JSONL), masking, rotation,
+//! 1-token probe, and persistent runtime configuration management.
 
 use crate::app::AppState;
 use crate::config::secrets::UploadKeyInput;
@@ -28,11 +29,16 @@ pub async fn upload_keys(
         return Err(AppError::BadRequest("no_keys_found_in_payload".into()));
     }
 
-    let mut inserted = Vec::with_capacity(inputs.len());
-    for inp in inputs {
-        let rec = state.vault.insert_key(&inp)?;
-        inserted.push(rec);
-    }
+    let vault = Arc::clone(&state.vault);
+    let inserted = tokio::task::spawn_blocking(move || {
+        let mut out = Vec::with_capacity(inputs.len());
+        for inp in &inputs {
+            out.push(vault.insert_key(inp)?);
+        }
+        AppResult::Ok(out)
+    })
+    .await
+    .map_err(|e| AppError::Internal(format!("vault_join_err: {e}")))??;
 
     Ok((
         StatusCode::CREATED,
@@ -118,7 +124,10 @@ fn infer_provider_from_env(env_key: &str) -> &'static str {
 
 /// List all uploaded provider keys with secrets masked.
 pub async fn list_keys(State(state): State<Arc<AppState>>) -> AppResult<Json<Value>> {
-    let keys = state.vault.list_masked()?;
+    let vault = Arc::clone(&state.vault);
+    let keys = tokio::task::spawn_blocking(move || vault.list_masked())
+        .await
+        .map_err(|e| AppError::Internal(format!("vault_join_err: {e}")))??;
     Ok(Json(json!({ "keys": keys })))
 }
 
@@ -127,7 +136,11 @@ pub async fn delete_key(
     State(state): State<Arc<AppState>>,
     Path(id): Path<String>,
 ) -> AppResult<Json<Value>> {
-    let deleted = state.vault.delete_key(&id)?;
+    let vault = Arc::clone(&state.vault);
+    let id_c = id.clone();
+    let deleted = tokio::task::spawn_blocking(move || vault.delete_key(&id_c))
+        .await
+        .map_err(|e| AppError::Internal(format!("vault_join_err: {e}")))??;
     if !deleted {
         return Err(AppError::NotFound(format!("key:{id}")));
     }
@@ -147,7 +160,12 @@ pub async fn rotate_key(
     Path(id): Path<String>,
     Json(body): Json<RotatePayload>,
 ) -> AppResult<Json<Value>> {
-    let ok = state.vault.rotate_key(&id, &body.api_key)?;
+    let vault = Arc::clone(&state.vault);
+    let id_c = id.clone();
+    let secret = body.api_key;
+    let ok = tokio::task::spawn_blocking(move || vault.rotate_key(&id_c, &secret))
+        .await
+        .map_err(|e| AppError::Internal(format!("vault_join_err: {e}")))??;
     if !ok {
         return Err(AppError::NotFound(format!("key:{id}")));
     }
@@ -161,9 +179,11 @@ pub async fn test_key(
 ) -> AppResult<Json<Value>> {
     use secrecy::ExposeSecret;
     let t0 = Instant::now();
-    let rec = state
-        .vault
-        .resolve_by_id(&id)?
+    let vault = Arc::clone(&state.vault);
+    let id_c = id.clone();
+    let rec = tokio::task::spawn_blocking(move || vault.resolve_by_id(&id_c))
+        .await
+        .map_err(|e| AppError::Internal(format!("vault_join_err: {e}")))??
         .ok_or_else(|| AppError::NotFound(format!("key:{id}")))?;
     if state.providers.stub_mode || rec.provider == "ollama" {
         return Ok(Json(json!({
@@ -211,11 +231,21 @@ pub async fn get_config(State(state): State<Arc<AppState>>) -> Json<Value> {
     Json(json!({ "settings": cfg }))
 }
 
-/// Update runtime settings from the UI Config tab.
+/// Update runtime settings from the UI Config tab and persist them to `config.toml`.
 pub async fn update_config(
     State(state): State<Arc<AppState>>,
     Json(new_cfg): Json<Settings>,
-) -> Json<Value> {
+) -> AppResult<Json<Value>> {
+    let to_save = new_cfg.clone();
+    let saved_path = tokio::task::spawn_blocking(move || to_save.save())
+        .await
+        .map_err(|e| AppError::Internal(format!("config_save_join_err: {e}")))?
+        .map_err(|e| AppError::Internal(format!("config_save_failed: {e}")))?;
+
     *state.settings.write().await = new_cfg.clone();
-    Json(json!({ "saved": true, "settings": new_cfg }))
+    Ok(Json(json!({
+        "saved": true,
+        "config_path": saved_path.display().to_string(),
+        "settings": new_cfg,
+    })))
 }

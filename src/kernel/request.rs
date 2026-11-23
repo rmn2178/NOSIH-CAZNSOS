@@ -3,6 +3,7 @@
 use crate::plane1::semiring::SemiringLabel;
 use crate::plane2::profiler::features::FeatureProfile10D;
 use crate::types::carbon::CarbonIntensity;
+use crate::types::decimal::ExactDecimal;
 use crate::types::energy::ModelTier;
 use crate::types::ids::RequestId;
 
@@ -17,6 +18,8 @@ pub struct KernelContext {
     pub prompt: String,
     /// Requested OpenAI model string.
     pub requested_model: String,
+    /// True if the request includes tool definitions (privileged tool-call sink for IFC).
+    pub has_tools: bool,
     /// Bound provenance semiring label.
     pub provenance: SemiringLabel,
     /// 10D anti-spoofing CPU feature profile.
@@ -31,4 +34,6 @@ pub struct KernelContext {
     pub chosen_model: String,
     /// Whether PCSP C-DoW mitigation triggered.
     pub cdow_mitigated: bool,
+    /// Exact USD amount pre-debited in Stage 5 for reconciliation or refund.
+    pub pre_debited_usd: ExactDecimal,
 }

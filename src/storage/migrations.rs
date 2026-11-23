@@ -25,6 +25,8 @@ pub fn apply_migrations(conn: &Connection) -> AppResult<()> {
              consumed_at INTEGER NOT NULL,
              expires_at INTEGER NOT NULL
          );
+         CREATE INDEX IF NOT EXISTS idx_consumed_jtis_expires_at
+             ON consumed_jtis (expires_at);
          CREATE TABLE IF NOT EXISTS linear_budgets (
              account_id TEXT PRIMARY KEY,
              initial_usd TEXT NOT NULL,
@@ -35,6 +37,10 @@ pub fn apply_migrations(conn: &Connection) -> AppResult<()> {
              created_at INTEGER NOT NULL,
              payload_jcs BLOB NOT NULL,
              leaf_hash BLOB NOT NULL
+         );
+         CREATE TABLE IF NOT EXISTS merkle_frontier (
+             height INTEGER PRIMARY KEY,
+             hash BLOB NOT NULL
          );
          CREATE TABLE IF NOT EXISTS merkle_sths (
              tree_size INTEGER PRIMARY KEY,

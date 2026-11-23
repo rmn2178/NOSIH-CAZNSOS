@@ -28,10 +28,15 @@ pub struct TenantId(pub String);
 pub struct JtiNonce(pub String);
 
 impl JtiNonce {
-    /// Generate a fresh 128-bit CSPRNG JTI nonce.
-    pub fn generate() -> Self {
+    /// Generate a fresh 128-bit CSPRNG JTI nonce, returning an error on OS CSPRNG failure.
+    pub fn try_generate() -> Result<Self, getrandom::Error> {
         let mut bytes = [0u8; 16];
-        let _ = getrandom::getrandom(&mut bytes);
-        Self(hex::encode(bytes))
+        getrandom::getrandom(&mut bytes)?;
+        Ok(Self(hex::encode(bytes)))
+    }
+
+    /// Generate a fresh 128-bit CSPRNG JTI nonce (panics on CSPRNG failure; never zero-falls back).
+    pub fn generate() -> Self {
+        Self::try_generate().expect("OS CSPRNG failure while generating JtiNonce")
     }
 }

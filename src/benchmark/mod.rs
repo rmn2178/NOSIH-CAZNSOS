@@ -63,10 +63,30 @@ pub async fn run_self_test(_stub_provider: bool) -> Result<String, String> {
         .build()
         .map_err(|e| e.to_string())?;
 
-    // 1. GET /v1/health -> 200
+    // 1. GET /v1/health -> 200 with numeric carbon_gco2_per_kwh
     let r1 = client.get(format!("{base}/v1/health")).send().await.map_err(|e| e.to_string())?;
     if r1.status() != reqwest::StatusCode::OK {
         return Err(format!("health_status={}", r1.status()));
+    }
+    let h_json: Value = r1.json().await.map_err(|e| e.to_string())?;
+    if h_json.get("carbon_gco2_per_kwh").and_then(Value::as_f64).is_none() {
+        return Err("health_missing_carbon_gco2_per_kwh".into());
+    }
+
+    // 1b. PUT /admin/config -> 200 and persists config.toml
+    let cur_cfg = state.settings.read().await.clone();
+    let r_cfg = client
+        .put(format!("{base}/admin/config"))
+        .header("X-NOSIH-Admin", &atok_s)
+        .json(&cur_cfg)
+        .send()
+        .await
+        .map_err(|e| e.to_string())?;
+    if r_cfg.status() != reqwest::StatusCode::OK {
+        return Err(format!("put_config_status={}", r_cfg.status()));
+    }
+    if !tmp.join("config.toml").exists() {
+        return Err("config_toml_not_persisted".into());
     }
 
     // 2. Unauthorized /v1/models -> 401 (A32)

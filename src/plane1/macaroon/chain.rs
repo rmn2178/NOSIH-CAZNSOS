@@ -104,7 +104,9 @@ impl MacaroonAuthority {
         ttl_secs: i64,
     ) -> AppResult<MacaroonToken> {
         let now = now_unix();
-        let cap_id = crate::types::ids::JtiNonce::generate().0;
+        let cap_id = crate::types::ids::JtiNonce::try_generate()
+            .map_err(|e| AppError::Internal(format!("csprng_cap_id_failed: {e}")))?
+            .0;
         let k_su = self.derive_session_key(tenant_id, session_id);
         let mut tok = MacaroonToken {
             cap_id,

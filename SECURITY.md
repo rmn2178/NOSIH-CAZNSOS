@@ -7,7 +7,7 @@
 1. **Zero Unsafe Rust (`#![forbid(unsafe_code)]`)**: Enforced at crate root (`src/lib.rs`) and verified in CI (`audit.yml`).
 2. **Non-Bypassable Capability Tokens**: `Authorized<ProviderCall>` and `Authorized<ProviderWarmup>` in `src/types/authorized.rs` have private inner fields and no public `new()` constructor. Upstream HTTP dispatch (`ProviderChain::call`) and connection pool warmup (`PA-PCS-PMC`) cannot compile without passing through Plane I `CAT-PLM` verification.
 3. **Encrypted Key Vault & Memory Zeroization**:
-   - Upstream provider keys are encrypted at rest with **AES-256-GCM** using a master key derived from the OS keyring (falling back to a `0600` local keyfile when no keyring daemon is available).
+   - Upstream provider keys are encrypted at rest with **AES-256-GCM** using an HKDF-SHA256 subkey derived from a dedicated 256-bit `~/.nosih/master.key` (`0600`, completely decoupled from the client-facing `local_key`).
    - Resolved secrets stay inside `secrecy::SecretString` (`zeroize` on drop) and are never cloned into long-lived plain `String`s.
 4. **Automatic Secret Redaction**: Any string matching common provider key patterns (`sk-`, `sk-ant-`, `AIza`, `gsk_`, `Bearer ...`) is replaced with `<REDACTED:sha256-prefix>` before hitting the in-memory log ring, SQLite WAL audit table, live SSE stream, or any of the 11 export formats.
 5. **Exact Financial Arithmetic**: Monetary budgets and cost calculations in `src/types/decimal.rs` and `src/plane1/budget/` strictly forbid IEEE 754 `f64`, using `rust_decimal` fixed-point arithmetic exclusively.

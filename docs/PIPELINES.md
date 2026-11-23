@@ -17,11 +17,11 @@ Every `POST /v1/chat/completions` call traverses seven deterministic stages orch
 | :--- | :--- | :--- | :--- |
 | **Stage 1: Ingress** | `src/kernel/stage1_ingress.rs` | Plane I | Validates JSON payload, canonicalizes via RFC 8785 JCS, binds caller origin (`USER_DIRECT`, `SIGNED_ERP`, `UNTRUSTED`) into `ProvenanceValue<T, I, C>`, and computes a 10-dimensional CPU request feature vector. |
 | **Stage 2: Semantic Cache** | `src/kernel/stage2_cache.rs` | Plane II | Embeds the prompt into a deterministic 320D signed feature-hash vector and queries the Provenance-Scoped Semantic Cache (`PS-RCSC`). Cache hits return immediately with `0g CO2` and skip upstream calls. |
-| **Stage 3: Carbon-Conformal Dispatch** | `src/kernel/stage3_dispatch.rs` | Plane II + III | Queries the 24h diurnal grid carbon forecaster `C(t)`, updates the PID conformal prediction band, runs the LinUCB contextual bandit, applies PCSP C-DoW tier capping for untrusted origins, and short-circuits math/policy queries to CPU-only `nosih-symbolic` (`SafeDecimalAST` + TF-IDF RAG). |
+| **Stage 3: Carbon-Conformal Dispatch** | `src/kernel/stage3_dispatch.rs` | Plane II + III | Queries the 24h diurnal grid carbon forecaster `C(t)`, updates the PID conformal prediction band, runs the LinUCB contextual bandit, applies PCSP C-DoW tier capping for untrusted origins, and short-circuits math/policy queries to CPU-only `nosih-symbolic` (`SafeDecimalAST` deterministic arithmetic). |
 | **Stage 4: Static DAG + IFC Verify** | `src/kernel/stage4_verify.rs` | Plane III | Runs Kahn's topological sort and Information-Flow Control (IFC) lattice checks to prevent cycles or taint escalation before any upstream capability is minted. |
 | **Stage 5: Capability Minting** | `src/kernel/stage5_mint.rs` | Plane I | Mints, attenuates, and verifies an HMAC-chained SPCCE-Macaroon (`CAT-PLM`) carrying exact `rust_decimal` budget bounds, returning the opaque compile-time token `Authorized<ProviderCall>`. |
 | **Stage 6: Warmup & Execution** | `src/kernel/stage6_execute.rs` | Plane III | Pre-authorizes connection pool warmup (`PA-PCS-PMC` via `Authorized<ProviderWarmup>`), decrypts the provider key inside `SecretString` (zeroized on drop), and streams SSE/JSON from the selected upstream provider. |
-| **Stage 7: CCEC & MTLog Commit** | `src/kernel/stage7_update.rs` | Kernel | Estimates Scope-2 energy/carbon (`PROXY_ESTIMATE`), updates the exact decimal budget ledger, appends a canonical leaf to the RFC 6962/9162 Merkle Tree (`MTLog`) with Ed25519 Signed Tree Head, and emits redacted events to the ring buffer, SQLite WAL, and live SSE stream. |
+| **Stage 7: CCEC & MTLog Commit** | `src/kernel/stage7_update.rs` | Kernel | Estimates Scope-2 energy/carbon (`PROXY_ESTIMATE`), updates the exact decimal budget ledger, appends a canonical leaf to the RFC 6962/9162 Merkle Tree (`MTLog`) with HMAC-SHA256 Signed Tree Head, and emits redacted events to the ring buffer, SQLite WAL, and live SSE stream. |
 
 ---
 
@@ -32,7 +32,7 @@ Every `POST /v1/chat/completions` call traverses seven deterministic stages orch
         │
         ▼  POST /admin/keys  (loopback-only + X-NOSIH-Admin CSRF header)
   SecretVault (src/config/secrets.rs)
-        │  AES-256-GCM encrypt (HKDF master key from OS keyring / 0600 fallback)
+        │  AES-256-GCM encrypt (HKDF subkey derived from dedicated 256-bit master.key, 0600)
         ▼
   SQLite Encrypted Vault (WAL mode, capped at 200 MB)
         │  Runtime resolve -> SecretString (Zeroize on drop, never cloned to plain String)

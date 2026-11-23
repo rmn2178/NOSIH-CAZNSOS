@@ -98,7 +98,7 @@ pub enum IntegrityRank {
 }
 
 impl IntegrityRank {
-    /// Parse from `X-NOSIH-Origin` header value.
+    /// Parse from a verified `X-NOSIH-Origin` header value.
     pub fn from_origin(s: &str) -> Self {
         match s.trim().to_ascii_lowercase().as_str() {
             "human" | "human_approval" => Self::HumanApproval,
@@ -111,6 +111,11 @@ impl IntegrityRank {
         }
     }
 
+    /// Parse an unauthenticated/client-asserted `X-NOSIH-Origin`, capping trust at `UserDirect`.
+    pub fn from_unverified_origin(s: &str) -> Self {
+        Self::from_origin(s).join(Self::UserDirect)
+    }
+
     /// Lattice join (`max`).
     pub fn join(self, other: Self) -> Self {
         if self >= other { self } else { other }
@@ -119,5 +124,26 @@ impl IntegrityRank {
     /// Numeric rank in `0..=6`.
     pub fn rank(self) -> u8 {
         self as u8
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn unverified_origin_cannot_escalate_above_user_direct() {
+        assert_eq!(
+            IntegrityRank::from_unverified_origin("human"),
+            IntegrityRank::UserDirect
+        );
+        assert_eq!(
+            IntegrityRank::from_unverified_origin("erp"),
+            IntegrityRank::UserDirect
+        );
+        assert_eq!(
+            IntegrityRank::from_unverified_origin("untrusted"),
+            IntegrityRank::Untrusted
+        );
     }
 }
