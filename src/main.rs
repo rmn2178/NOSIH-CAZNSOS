@@ -12,6 +12,17 @@ use nosih_caznsos::shutdown::shutdown_signal;
 use std::net::SocketAddr;
 use std::sync::Arc;
 
+fn open_browser(url: &str) {
+    #[cfg(target_os = "windows")]
+    let _ = std::process::Command::new("cmd")
+        .args(["/C", "start", "", url])
+        .spawn();
+    #[cfg(target_os = "macos")]
+    let _ = std::process::Command::new("open").arg(url).spawn();
+    #[cfg(all(unix, not(target_os = "macos")))]
+    let _ = std::process::Command::new("xdg-open").arg(url).spawn();
+}
+
 #[tokio::main]
 async fn main() {
     let args = CliArgs::parse();
@@ -85,7 +96,7 @@ async fn main() {
     println!("Listening on {url}");
 
     if !args.no_browser && !args.self_test {
-        let _ = open::that(&url);
+        open_browser(&url);
     }
 
     let listener = match tokio::net::TcpListener::bind(addr).await {
